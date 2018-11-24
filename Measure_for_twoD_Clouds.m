@@ -1,21 +1,20 @@
 %{ 
 调用函数：Measure_for_oneD_Clouds.m;
+输入：6个训练集参数，6个测试集参数，都是矩阵，行数是数据集序列个数，列数是六个参数
+输出：矩阵TOM
 %}
 
-function [TOM]=Measure_for_twoD_Clouds(C1_parameter,C2_parameter)
-   %C1_parameter=[Ex1,En1,He1,Ex2,En2,He2] 代表一个二维云模型
-   %C2_parameter=[Ex3,En3,He3,Ex4,En5,He6] 代表另一个二维云模型
-%一朵二维云的6个参数   
-Ex1=C1_parameter(1); En1=C1_parameter(2); He1=C1_parameter(3);
-Ex2=C1_parameter(4); En2=C1_parameter(5); He2=C1_parameter(6);
-%另一朵二维云的6个参数   
-Ex3=C2_parameter(1); En3=C2_parameter(2); He3=C2_parameter(3);
-Ex4=C2_parameter(4); En4=C2_parameter(5); He4=C2_parameter(6);
+function TOM = Measure_for_twoD_Clouds( ...
+    train_Ex1, train_En1, train_He1, train_Ex2, train_En2, train_He2, ...
+    test_Ex1, test_En1, test_He1, test_Ex2, test_En2, test_He2)
 
-[OD1,u1]=Measure_for_oneD_Clouds(Ex1,En1,He1,Ex3,En3,He3);
-[OD2,u2]=Measure_for_oneD_Clouds(Ex2,En2,He2,Ex4,En4,He4);
-OM1=OD1*u1;
-OM2=OD2*u2;
-TOM=OM1*OM2;
-%TOM=OM1+OM2;
+% 注意输入参数是训练集和测试集两朵交叉的
+[OD1, u1] = Measure_for_oneD_Clouds(train_Ex1, train_En1, train_He1, test_Ex1, test_En1, test_He1);
+[OD2, u2] = Measure_for_oneD_Clouds(train_Ex2, train_En2, train_He2, test_Ex2, test_En2, test_He2);
+
+% 输出参数
+OM1 = OD1 .* u1;
+OM2 = OD2 .* u2;
+TOM = OM1 .* OM2;
+
 end

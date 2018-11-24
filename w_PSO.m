@@ -1,7 +1,7 @@
 % º¯Êı¹¦ÄÜ£ºÓÃÁ£×ÓÈºËã·¨Ñ°ÕÒÊ¹¶şÎ»ÔÆÄ£ĞÍÎó²îÂÊ×îĞ¡µÄ·Ö¶Îµã
 % ÊäÈë£ºÑµÁ·¼¯--traindata £»ÑµÁ·¼¯±êÇ©--trainlabel £»²âÊÔ¼¯--testdata £»²âÊÔ¼¯±êÇ©--testlabel£» ·Ö¶ÎÊı--w£» Êı¾İ¼¯Ãû³Æ--Name£¨×Ö·û´®£©
 % Êä³ö£ºÎó²îÂÊ×îĞ¡µÄ·Ö¶ÎµãÎ»ÖÃĞĞÏòÁ¿--SegPoint£»×îĞ¡µÄÎó²îÂÊ--error_rate
-% µ÷ÓÃº¯Êı£ºtwoD_NCR_PSO.m;
+% µ÷ÓÃº¯Êı£ºtwoD_NCR_Seg.m;
 
 function [SegPoint, error_rate] = w_PSO(traindata, trainlabel, testdata, testlabel, w, Name)
 %% Á£×ÓÈº³õÊ¼»¯
@@ -29,7 +29,7 @@ popv = round(rand(N, D) * (Vmax - Vmin) + Vmin); % Á£×ÓÈºËÙ¶È³õÊ¼»¯£¬Ã¿Ò»ĞĞ±íÊ¾Ã
 pBest = popx;
 pBestValue = zeros(N, 1); % ¼ÆËãÃ¿¸öÁ£×ÓµÄÊÊÓ¦¶Èº¯Êı£¨ÕâÀïÊÇ¶şÎ¬ÔÆµÄÎó²î£©
 for i = 1: N
-    [~, ~, ~, pBestValue(i)] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, popx(i, :), Name);
+    [~, pBestValue(i)] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, popx(i, :), Name);
 end
 
 % Á£×ÓÈºµÄÈ«¾Ö×î¼ÑÎ»ÖÃ³õÊ¼»¯£¨ÕâÀïÊÇÎó²îÂÊ×îĞ¡µÄ·Ö¶Î×ø±ê£©
@@ -66,7 +66,7 @@ for t = 1: T % µü´ú´ÎÊıT
 
         % ¸üĞÂÁ£×ÓÀúÊ·×îÓÅ
         disp(['¸üĞÂµ½Á£×Ó ', num2str(i)]);
-        [~, ~, ~, error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, popx(i, :), Name);
+        [~, error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, popx(i, :), Name);
         if error_rate < pBestValue(i) % ¸üĞÂ¸öÌå×îÓÅ
             pBest(i, :) = popx(i, :);
             pBestValue(i) = error_rate;
