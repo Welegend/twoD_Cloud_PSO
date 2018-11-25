@@ -65,7 +65,8 @@ for t = 1: T % 迭代次数T
         end
 
         % 更新粒子历史最优
-        disp(['更新到粒子 ', num2str(i)]);
+        disp(['更新到粒子 ', num2str(i)]);% 调试时使用
+        
         [~, error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, popx(i, :), Name);
         if error_rate < pBestValue(i) % 更新个体最优
             pBest(i, :) = popx(i, :);
