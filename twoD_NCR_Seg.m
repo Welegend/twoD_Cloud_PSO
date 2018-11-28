@@ -12,6 +12,7 @@
 
 function [Measure_Table, error_rate] = ...
     twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, SegPoint, Name)
+dbstop if error % 调试使用
 %% 训练集和测试集初始化
 [m1, ~] = size(traindata);             % 训练集有m1组时间序列，每个时间序列有n维度；
 [m2, n] = size(testdata);              % 测试集有m2组时间序列，每个时间序列有n维度；
