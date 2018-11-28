@@ -47,85 +47,90 @@ for t = 1: T % 迭代次数T
     ww = 0.9 - (0.9 - 0.4) * T_init / T; % 惯性系数,随迭代次数增加而递减
     
    %% 遗传算法更新粒子位置和速度，放在粒子群算法之前，省去了检测重复的步骤
-    r1 = rand();
     num = ceil(0.2 * N); % 从N个粒子群中抽出百分比0.2的粒子，数目为num，向上取整
-    if r1 < 0.6 % 变异概率
-        %%%%%%%%%%%%%选择%%%%%%%%%%%%%%%
-        [~, I] = sort(pBestValue, 'descend'); % pBestValue大的表现越不好，把最大的num个拿出来给popx_pool, popv_pool
-        popx_pool = popx(I(1: num + 1), :); % num多一个是为下面交叉准备的
-        popv_pool = popv(I(1: num + 1), :);
+    %%%%%%%%%%%%%选择%%%%%%%%%%%%%%%
+    [~, I] = sort(pBestValue, 'descend'); % pBestValue大的表现越不好，把最大的num个拿出来给popx_pool, popv_pool
+    popx_pool = popx(I(1: num + 1), :); % num多一个是为下面交叉准备的
+%     popv_pool = popv(I(1: num + 1), :);
 
-        %{
+    %{
+    % 轮盘赌转方式
+    pBestValue_one = pBestValue / sum(pBestValue);
+    pBestValue_one_cumsum = cumsum(pBestValue_one); % 计算累计概率，pBestValue大的更容易被抽到
+    popx_pool = zeros(num, D);
+    popv_pool = zeros(num, D);
+    for j = 1: num % 轮盘赌转num次
+        k = find(pBestValue_one_cumsum >= rand, 1); % 提取下标值
+        popx_pool(j, :) = popx(k, :);
+        popv_pool(j, :) = popv(k, :);
+    end
+    %}
+
+    %%%%%%%%%%%%%交叉%%%%%%%%%%%%%%%
+    for i = 1: num % 对popx_pool的第i个依次交叉
+        childx = [popx_pool(i, :), popx_pool(i + 1, :)];
+        childx = childx(randperm(length(childx))); % 把popx_pool两行打乱
+        childx = sort(reshape(childx, 2, []), 2); % 得到两行交叉后的后代
+        index = any(childx(:, 1: end - 1) == childx(:, 2: end), 2); % index是chidlx中有重复元素的那行的索引
+        childx(index, :) = []; % 此时的chidlx每一行元素都是不重复的
+        x = size(childx, 1); % childx还剩x行
+
+        childx_error_rate = zeros(x, 1); % 求出chidx对应的误差率
+        for j = 1: x
+            [~, childx_error_rate(j)] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx(j, :), Name);
+        end
+        popx_faAchi = [popx_pool(i, :); childx];
+        error_rate_faAchi = [pBestValue(I(i)); childx_error_rate];
+
         % 轮盘赌转方式
-        pBestValue_one = pBestValue / sum(pBestValue);
-        pBestValue_one_cumsum = cumsum(pBestValue_one); % 计算累计概率，pBestValue大的更容易被抽到
-        popx_pool = zeros(num, D);
-        popv_pool = zeros(num, D);
-        for j = 1: num % 轮盘赌转num次
-            k = find(pBestValue_one_cumsum >= rand, 1); % 提取下标值
-            popx_pool(j, :) = popx(k, :);
-            popv_pool(j, :) = popv(k, :);
+        error_rate_pool = 1 ./ error_rate_faAchi; % 轮盘赌转概率越大越容易抽到，而我们更想抽概率小的
+        error_rate_pool = error_rate_pool ./ sum(error_rate_pool);
+        error_rate_cumsum = cumsum(error_rate_pool); % 计算累计概率，pBestValue大的更容易被抽到
+        k = find(error_rate_cumsum >= rand, 1); % 赌转一次提取下标值
+        popx(I(i), :) = popx_faAchi(k, :); % 更新粒子交叉后的位置
+        if error_rate_faAchi(k) < pBestValue(I(i)) % 更新个体最优
+            pBest(I(i), :) = popx_faAchi(k, :);
+            pBestValue(I(i)) = error_rate_faAchi(k);
+            if pBestValue(I(i)) < gBestValue % 更新全局最优
+                gBest = pBest(I(i), :);
+                gBestValue = pBestValue(I(i));
+            end
+        end
+        %{
+        childv_flag = 0;
+        cpoint = randperm(D - 1, 1); % 随机生成交叉点
+
+        childx1 = sort([popx_pool(j, 1: cpoint), popx_pool(j + 1, cpoint + 1: end)]); % 交叉后的后代
+        if all(childx1(1: end - 1) ~= childx1(2: end)) % 检测是否有重复元素
+            [~, childx1_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx1, Name); % 计算交叉后的误差率
+            if childx1_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
+                popx(I(j), :) = childx1;
+                pBest(I(j), :) = childx1;
+                pBestValue(I(j)) = childx1_error_rate;
+                childv_flag = 1; % 后面需要更新popv
+            end
+        end
+        childx2 = sort([popx_pool(j + 1, 1: cpoint), popx_pool(j, cpoint + 1: end)]); % 交叉后的后代
+        if all(childx2(1: end - 1) ~= childx2(2: end)) % 检测是否有重复元素
+            [~, childx2_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx2, Name); % 计算交叉后的误差率
+            if childx2_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
+                popx(I(j), :) = childx2;
+                pBest(I(j), :) = childx2;
+                pBestValue(I(j)) = childx2_error_rate;
+                childv_flag = 1;
+            end
         end
         %}
-
-        %%%%%%%%%%%%%交叉变异%%%%%%%%%%%%%%%
-        for j = 1: num
-            childv_flag = 0;
-            
-            childx = [popx_pool(j, :), popx_pool(j + 1, :)];
-            childx = childx(randperm(length(childx))); % 把popx_pool两行打乱
-            childx1 = sort(childx(1: D)); % 交叉后的后代
-            if all(childx1(1: end - 1) ~= childx1(2: end)) % 检测是否有重复元素
-                [~, childx1_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx1, Name); % 计算交叉后的误差率
-                if childx1_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
-                    popx(I(j), :) = childx1;
-                    pBest(I(j), :) = childx1;
-                    pBestValue(I(j)) = childx1_error_rate;
-                    childv_flag = 1; % 后面需要更新popv
-                end
-            end
-            childx2 = sort(childx(D + 1: end)); % 交叉后的后代
-            if all(childx2(1: end - 1) ~= childx2(2: end)) % 检测是否有重复元素
-                [~, childx2_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx2, Name); % 计算交叉后的误差率
-                if childx2_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
-                    popx(I(j), :) = childx2;
-                    pBest(I(j), :) = childx2;
-                    pBestValue(I(j)) = childx2_error_rate;
-                    childv_flag = 1;
-                end
-            end
+        if k ~= 1 % popx变化了
+            childv = ww * popx_faAchi(1, :) - popx_faAchi(k, :);
+            popv(I(i), :) = childv;
             %{
-            childv_flag = 0;
-            cpoint = randperm(D - 1, 1); % 随机生成交叉点
-            
-            childx1 = sort([popx_pool(j, 1: cpoint), popx_pool(j + 1, cpoint + 1: end)]); % 交叉后的后代
-            if all(childx1(1: end - 1) ~= childx1(2: end)) % 检测是否有重复元素
-                [~, childx1_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx1, Name); % 计算交叉后的误差率
-                if childx1_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
-                    popx(I(j), :) = childx1;
-                    pBest(I(j), :) = childx1;
-                    pBestValue(I(j)) = childx1_error_rate;
-                    childv_flag = 1; % 后面需要更新popv
-                end
-            end
-            childx2 = sort([popx_pool(j + 1, 1: cpoint), popx_pool(j, cpoint + 1: end)]); % 交叉后的后代
-            if all(childx2(1: end - 1) ~= childx2(2: end)) % 检测是否有重复元素
-                [~, childx2_error_rate] = twoD_NCR_Seg(traindata, trainlabel, testdata, testlabel, childx2, Name); % 计算交叉后的误差率
-                if childx2_error_rate < pBestValue(I(j)) % 如果交叉后误差率变小，那么保留交叉后的结果
-                    popx(I(j), :) = childx2;
-                    pBest(I(j), :) = childx2;
-                    pBestValue(I(j)) = childx2_error_rate;
-                    childv_flag = 1;
-                end
+            childv = (popv_pool(i, :) + popv_pool(i + 1, :)) .* norm(popv_pool(i, :), 2) ./ ...
+                norm(popv_pool(i, :) + popv_pool(i + 1, :), 2); % 分子分母数太大容易出现NaN
+            if any(isnan(childv)) == 0 % 防止childv得到NaN出错
+                popv(I(i), :) = round(childv);
             end
             %}
-            if childv_flag
-                childv = (popv_pool(j, :) + popv_pool(j + 1, :)) .* norm(popv_pool(j, :), 2) ./ ...
-                    norm(popv_pool(j, :) + popv_pool(j + 1, :), 2); % 分子分母数太大容易出现NaN
-                if any(isnan(childv)) == 0 % 防止childv得到NaN出错
-                    popv(I(j), :) = round(childv);
-                end
-            end
         end
     end
     
