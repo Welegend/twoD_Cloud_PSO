@@ -30,7 +30,7 @@ error_rate = zeros(length(w), 1);
 for i = 1: length(w)
     [SegPoint_cell{i}, error_rate(i)] = w_PSO(traindata, trainlabel, testdata, testlabel, w(i), Name);
 end
-pause(0.001); % 调试使用，在工作区保存需要的数据
+
 end
 
 
