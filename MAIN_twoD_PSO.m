@@ -24,7 +24,7 @@ trainlabel = Rowtraindata(:, 1);          %训练集标签
 testlabel = Rowtestdata(:, 1);            %测试集标签
 
 %% 用PSO算法求分段数由2到9的最佳分段点和误差率
-w = (4: 9)'; % w为要寻优的分段数
+w = (3: 9)'; % w为要寻优的分段数
 SegPoint_cell = cell(length(w), 1);
 error_rate = zeros(length(w), 1);
 for i = 1: length(w)
